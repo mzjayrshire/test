@@ -395,79 +395,29 @@ F_write_log_local "Start to get the Syslog data of ${list_file}"
            fi
 #20160413_add_end
 
-
-for ((hh=0;hh<24;hh++))
-do 
-       for ((mm=5;mm<=60;mm=mm+5))
+for ((hh=0; hh<24; hh++))
+do
+       for ((mm=0; mm<60; mm++))
        do
-           lenm=`expr length ${mm}`
-           lenh=`expr length ${hh}`
-
-           if [ ${lenm} -gt 1 ] ; then
-               m1=`echo ${mm} | awk '{print substr($1,2,1)}'`
-               m2=`echo ${mm} | awk '{print substr($1,1,1)}'`
-               fix_mm=${mm}
+           if [ $hh -lt 10 ]; then
+               fix_hh="0$hh"
            else
-               m1=`echo ${mm} | awk '{print substr($1,1,1)}'`
-               m2=0
-               fix_mm=0${mm}
+               fix_hh="$hh"
            fi
 
-           if [ ${m1} -eq 0 ] ; then
-               m11=$((10#${m1}+5))
-               m12=$((10#${m1}+9))
-               if [ ${m2} -gt 0 ] ; then
-                   m2=$((10#${m2}-1))
-               fi
+           if [ $mm -lt 10 ]; then
+               fix_mm="0$mm"
            else
-               m11=$((10#${m1}-5))
-               m12=$((10#${m1}-1))
+               fix_mm="$mm"
            fi
 
-#20160413_delete_start
-#           process_copydata_date_tmp=${process_copydata_date_today}
-#20160413_delete_end
-
-#20160226_modify_start
-           fix_hh_out=${hh}
-           if [ ${mm} -eq 60 ] ; then
-               if [ ${hh} -eq 23 ] ; then
-#20160413_modify_start
-#                   fix_hh_out=00
-#                      process_copydata_date_tmp=${process_copydata_date_nextday}
-                      continue
-#20160413_modify_end
-                 else
-                     fix_hh_out=$((10#${hh}+1))
-#20160226_modify_end
-               fi
-               fix_mm=00
-           fi
-
-           if [ ${lenh} -lt 2 ] ; then
-               fix_hh=0${hh}
-#20160226_modify_start
-                 lenh1=`expr length ${fix_hh_out}`
-               if [ ${lenh1} -lt 2 ] ; then
-                    fix_hh_tmp=0${fix_hh_out}
-                else
-               fix_hh_tmp=${fix_hh_out}
-               fi
-           else
-               fix_hh=${hh}
-#                if [ ${fix_hh_out} -ne 00 ] ; then
-                    fix_hh_tmp=${fix_hh_out}
-#                fi
-#20160226_modify_end
-           fi
-
-           cof=`echo "${process_copydata_date}" ${fix_hh}:${m2}[${m11}-${m12}]`
-
+           cof=`echo "${process_copydata_date}" ${fix_hh}:${fix_mm}`
+           echo $cof
            rcnt=`grep "${cof}" ${list_file}|egrep "${idtext}"|wc -l`
 #F_write_log_local "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(${cof},${rcnt},${process_copydata_date_tmp},${process_copydata_date},${idtext})"
 #20160413_modify_start
 #            echo "${process_copydata_date_tmp},${fix_hh_tmp}:${fix_mm}:00,${rcnt}">>${shell_log_month_path}
-            echo "${process_copydata_date_today},${fix_hh_tmp}:${fix_mm}:00,${rcnt}">>${shell_log_month_path}
+            echo "${process_copydata_date_today},${fix_hh}:${fix_mm}:00,${rcnt}">>${shell_log_month_path}
 #20160413_modify_end
 
 
