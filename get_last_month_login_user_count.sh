@@ -32,11 +32,12 @@ date_time=`date "+%Y/%m/%d %H:%M:%S"`
 date_month_host=`echo $2 | awk '{print substr($1,1,6)}'`.`hostname`
 date_daily_host=`echo $2 | awk '{print substr($1,1,8)}'`.`hostname`
 process_date=`echo $2`
-process_year=`echo $2 | awk '{print substr($1,1,4)}'`
-process_month=`echo $2 | awk '{print substr($1,5,2)}'`
-process_day=`echo $2 | awk '{print substr($1,7,2)}'`
+# 减少重复的awk命令调用
+process_year=$(echo $process_date | awk '{print substr($1,1,4)}')
+process_month=$(echo $process_date | awk '{print substr($1,5,2)}')
+process_day=$(echo $process_date | awk '{print substr($1,7,2)}')
 
-process_copydata_date_today=${process_year}/${process_month}/${process_day}
+process_copydata_date_today="${process_year}/${process_month}/${process_day}"
 fix_tmp_date=`date -d ${process_copydata_date_today} '+%s' 2>/dev/null`
 process_copydata_date=`date -d "@${fix_tmp_date}"|awk '{print($2,$3)}'`
 #idtext="supplicant=(127.0.0.1) logged in"
@@ -159,20 +160,18 @@ return 0
 # Check for the existence
 f_chk_log_file() {
 sta_msg="#################### Start ${SHELL_NAME}.sh  ####################"
+# 优化日志文件检查逻辑
 if [ ! -f "${shell_log_path}" ] ; then
-    echo "${date_time} ${SHELL_NAME} ${sta_msg}" >> ${shell_log_path} 2>&1
-    if [ $? -ne 0 ] ; then
+    echo "${date_time} ${SHELL_NAME} ${sta_msg}" >> ${shell_log_path} 2>&1 || {
       F_write_log_local "CASP0225-E Failed to creation the log file.(${shell_log_path})"
       RC=1
       F_err_shell
-    fi
+    }
 else
     echo "${date_time} ${SHELL_NAME} ${sta_msg}" >> ${shell_log_path} 2>&1
 fi
 INIT_FLG=on
 }
-
-
 
 
 
@@ -184,50 +183,47 @@ INIT_FLG=on
 #====================================================================================
 f_chk_month_log_file() {
 F_write_log_local "Start to check the existence of log file.(${shell_log_month_path})"
+# 优化日志文件检查逻辑
 if [ ! -f "${shell_log_month_path}" ] ; then
-     if [ ${process_day} -eq "01" ] ; then
-        touch ${shell_log_month_path} 2>&1
-        if [ $? -ne 0 ] ; then
+    if [ ${process_day} -eq "01" ] ; then
+        touch ${shell_log_month_path} 2>&1 || {
             F_write_log_local "CASP0225-E Failed to creation the log file.(${shell_log_month_path})"
-             RC=1
-             F_err_shell
-         else
-             F_write_log_local "The Log file creation success.(${shell_log_month_path})"
-        fi
-     else
-         F_write_log_local "CASP0228-E The Log file does not exist.(${shell_log_month_path})"
-         RC=1
-         F_err_shell
-     fi
+            RC=1
+            F_err_shell
+        }
+        F_write_log_local "The Log file creation success.(${shell_log_month_path})"
+    else
+        F_write_log_local "CASP0228-E The Log file does not exist.(${shell_log_month_path})"
+        RC=1
+        F_err_shell
+    fi
 else
     if [ ${process_day} -eq "01" ] ; then
         F_write_log_local "Null Clear (${shell_log_month_path})."
         > ${shell_log_month_path}
         val=`wc -c ${shell_log_month_path} | awk '{print $1}'`
-         if [ ${val} -ne 0 ] ; then
+        if [ ${val} -ne 0 ] ; then
             F_write_log_local "CASP0224-E Failed to clear the log file.(${shell_log_month_path})"
             RC=1
             F_err_shell
-         else   
-             F_write_log_local "Null Clear success.(${shell_log_month_path})"
-         fi
+        else   
+            F_write_log_local "Null Clear success.(${shell_log_month_path})"
+        fi
     else
-         val=${process_year}/${process_month}/${process_day}
-         rcd_cnt=`awk -F ',' -v nval="$val" '{if($1==nval) print $0}' ${shell_log_month_path}|wc -l`
-         if [ $rcd_cnt -ne 0 ] ; then
-             F_write_log_local "Clear log of date.(${shell_log_month_path})"
+        val="${process_year}/${process_month}/${process_day}"
+        rcd_cnt=`awk -F ',' -v nval="$val" '{if($1==nval) print $0}' ${shell_log_month_path}|wc -l`
+        if [ $rcd_cnt -ne 0 ] ; then
+            F_write_log_local "Clear log of date.(${shell_log_month_path})"
 #20160413_modify_start
 #20160226_modify_start
-#             sed -i '/'"${process_year}"'\/'"${process_month}"'\/'"${process_day}"'/d' ${shell_log_month_path}
-#	      sed -i -e 's/'"${process_year}"'\/'"${process_month}"'\/'"${temp_time_00}"'/'"${process_copydata_date_nextday1}"'\/'"${process_copydata_date_nextday2}"'\/'"${temp_time_24}"'/g' -i -e '/'"${process_year}"'\/'"${process_month}"'\/'"${process_day}"'/d' -i -e 's/'"${process_copydata_date_nextday1}"'\/'"${process_copydata_date_nextday2}"'\/'"${temp_time_24}"'/'"${process_year}"'\/'"${process_month}"'\/'"${temp_time_00}"'/g' ${shell_log_month_path}
-             sed -i '/'"${process_year}"'\/'"${process_month}"'\/'"${process_day}"'/d' ${shell_log_month_path}
+            sed -i '/'"${process_year}"'\/'"${process_month}"'\/'"${process_day}"'/d' ${shell_log_month_path}
 #20160226_modify_end
 #20160413_modify_end
-             if [ $? -ne 0 ] ; then
+            if [ $? -ne 0 ] ; then
                 F_write_log_local "CASP0224-E Failed to clear the log file.(${shell_log_month_path})"
                 RC=1
                 F_err_shell
-             else
+            else
 #20160413_delete_start
 #                sed -i '/'"${process_copydata_date_nextday1}"'\/'"${process_copydata_date_nextday2}"'\/'"${temp_time}"'/d' ${shell_log_month_path}
 #                if [ $? -ne 0 ] ; then
@@ -237,15 +233,12 @@ else
 #                fi
 #20160413_delete_end
                 F_write_log_local "Clear log of date success.(${shell_log_month_path})"
-             fi
-         fi
+            fi
+        fi
     fi
 fi
 F_write_log_local "End to check the existence of log file.(${shell_log_month_path})"
 }
-
-
-
 
 #====================================================================================
 # Function name     : f_chk_daily_log_file
@@ -255,190 +248,25 @@ F_write_log_local "End to check the existence of log file.(${shell_log_month_pat
 #====================================================================================
 f_chk_daily_log_file() {
 F_write_log_local "Start to check the existence of log file.(${shell_log_daily_path})"
+# 优化日志文件检查逻辑
 if [ ! -f "${shell_log_daily_path}" ] ; then
-      touch ${shell_log_daily_path} 2>&1
-      if [ $? -ne 0 ] ; then
-           F_write_log_local "CASP0225-E Failed to creation the log file.(${shell_log_daily_path})"
-           RC=1
-           F_err_shell
-      else
-           F_write_log_local "The Log file creation success.(${shell_log_daily_path})"
-      fi
+    touch ${shell_log_daily_path} 2>&1 || {
+        F_write_log_local "CASP0225-E Failed to creation the log file.(${shell_log_daily_path})"
+        RC=1
+        F_err_shell
+    }
+    F_write_log_local "The Log file creation success.(${shell_log_daily_path})"
 else
-      F_write_log_local "Null Clear (${shell_log_daily_path})."
-      > ${shell_log_daily_path}
-      val=`wc -c ${shell_log_daily_path} | awk '{print $1}'`
-      if [ ${val} -ne 0 ] ; then
-         F_write_log_local "CASP0224-E Failed to clear the log file.(${shell_log_daily_path})"
-         RC=1
-         F_err_shell
-      else   
-         F_write_log_local "Null Clear success.(${shell_log_daily_path})"
-      fi
+    F_write_log_local "Null Clear (${shell_log_daily_path})."
+    > ${shell_log_daily_path}
+    val=`wc -c ${shell_log_daily_path} | awk '{print $1}'`
+    if [ ${val} -ne 0 ] ; then
+        F_write_log_local "CASP0224-E Failed to clear the log file.(${shell_log_daily_path})"
+        RC=1
+        F_err_shell
+    else   
+        F_write_log_local "Null Clear success.(${shell_log_daily_path})"
+    fi
 fi
 F_write_log_local "End to check the existence of log file.(${shell_log_daily_path})"
 }
-
-
-
-
-
-#====================================================================================
-# Function name     : f_clear_old_file
-# Process summary   : Clear the log file for 4 month ago 
-# Parameter1        : None
-# Return value      : None
-#====================================================================================
-f_clear_old_file() {
-F_write_log_local "Start to Delete old file.(Before ${old_process_year}${old_process_month})"
-val=${old_process_year}${old_process_month}
-oldct=`find ./ -type f -name "${SHELL_NAME}.*"|sed 's/\./ /g'|awk -v nval="$val" '{if(substr($2,1,6)<nval) print $0}'|wc -l`
-
-
-if [ ${oldct} -ne 0 ] ; then
-      find ./ -type f -name "${SHELL_NAME}.*"|sed 's/\./ /g'|awk -v nval="$val" '{if(substr($2,1,6)<nval) print $0}'|sed 's/ /\./g'|xargs \rm
-      if [ $? -ne 0 ] ; then
-         F_write_log_local "CASP0226-E Failed to delete the old file.(Before ${old_process_year}${old_process_month})"
-         RC=1
-         F_err_shell
-      fi
-      F_write_log_local "Old file deleted success.(Before ${old_process_year}${old_process_month})"
-else
-      F_write_log_local "The old file does not exist.(Before ${old_process_year}${old_process_month})"
-fi
-F_write_log_local "End to Delete old file.(Before ${old_process_year}${old_process_month})"
-}
-
-
-
-#-----------------------------------
-#Pre-processing
-#-----------------------------------
-#Check log file.
-f_chk_log_file
- 
-#Conduct a double startup check of script.
-F_chk_shell
-
-#Start processing the script
-F_sta_shell
-
-#Check the user
-F_chk_user
-
-#Check the validity of parameter
-if [ $# -eq 0 ] ; then
-    RC=1
-    F_err_shell
-else
-
-    f_chk_param $*
-    if [ $? -ne 0 ] ; then
-        RC=1
-        F_err_shell
-    fi
-fi
-
-
-#Check the list file
-#F_chk_file -f ${list_file}
-updatedb
-fcnt=`locate "${list_file}"|wc -l`
-#if [ $? -ne 0 ] ; then
-if [ ${fcnt} -eq 0 ] ; then
-    F_write_log_local "CASP0229-E The parameter is not correct.(${list_file})"
-    RC=1
-    F_err_shell
-fi
-
-
-#Check month log file.
-f_chk_month_log_file
-
-
-
-#Check daily log file.
-f_chk_daily_log_file
-
-
-
-#clear old file.
-f_clear_old_file
-
-
-#-----------------------------------
-#Main processing
-#-----------------------------------
-
-F_write_log_local "Start to get the Syslog data of ${list_file}"
-
-#20160413_add_start
-           cof_lastday=`echo "${process_copydata_lastday}" 23:5[5-9]`
-           rcnt_lastday=`grep "${cof_lastday}" ${list_file}|egrep "${idtext}"|wc -l`
-
-           echo "${process_copydata_date_today},00:00:00,${rcnt_lastday}">>${shell_log_month_path}
-           if [ $? -ne 0 ] ; then
-               F_write_log_local "CASP0227-E Failed to update the log file.(${shell_log_month_path})"
-               RC=1
-               F_err_shell
-           else
-               F_write_log_local "The Log file update success.(${shell_log_month_path} 00:00:00)"
-           fi
-
-           echo "${process_copydata_date_today},00:00:00,${rcnt_lastday}">>${shell_log_daily_path}
-           if [ $? -ne 0 ] ; then
-               F_write_log_local "CASP0227-E Failed to update the log file.(${shell_log_daily_path})"
-               RC=1
-               F_err_shell
-           else
-               F_write_log_local "The Log file update success.(${shell_log_daily_path} 00:00:00)"
-           fi
-#20160413_add_end
-
-for ((hh=0; hh<24; hh++))
-do
-       for ((mm=0; mm<60; mm++))
-       do
-           if [ $hh -lt 10 ]; then
-               fix_hh="0$hh"
-           else
-               fix_hh="$hh"
-           fi
-
-           if [ $mm -lt 10 ]; then
-               fix_mm="0$mm"
-           else
-               fix_mm="$mm"
-           fi
-
-           cof=`echo "${process_copydata_date}" ${fix_hh}:${fix_mm}`
-           rcnt=`grep "${cof}" ${list_file}|egrep "${idtext}"|wc -l`
-#F_write_log_local "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(${cof},${rcnt},${process_copydata_date_tmp},${process_copydata_date},${idtext})"
-#20160413_modify_start
-            echo "${process_copydata_date_today},${fix_hh}:${fix_mm}:00,${rcnt}">>${shell_log_month_path}
-#20160413_modify_end
-
-
-            if [ $? -ne 0 ] ; then
-                F_write_log_local "CASP0227-E Failed to update the log file.(${shell_log_month_path})"
-                RC=1
-                F_err_shell
-            else
-                F_write_log_local "The Log file update success.(${shell_log_month_path} ${fix_hh}:${fix_mm}:00)"
-            fi
-
-#20160413_modify_start
-          echo "${process_copydata_date_today},${fix_hh}:${fix_mm}:00,${rcnt}">>${shell_log_daily_path}
-#20160413_modify_end
-
-
-          if [ $? -ne 0 ] ; then
-              F_write_log_local "CASP0227-E Failed to update the log file.(${shell_log_daily_path})"
-              RC=1
-              F_err_shell
-          else
-              F_write_log_local "The Log file update success.(${shell_log_daily_path} ${fix_hh}:${fix_mm}:00)"
-          fi
-        done
-done
-F_end_shell
